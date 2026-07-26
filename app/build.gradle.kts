@@ -3,6 +3,17 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+// ── Read secrets from secrets.properties ─────────────────────────────
+val secretsFile = rootProject.file("secrets.properties")
+val secrets = java.util.Properties()
+if (secretsFile.exists()) {
+    secretsFile.inputStream().use { secrets.load(it) }
+}
+
+val invidiousHost = secrets.getProperty("INVIDIOUS_HOST") ?: "my.invidious.org"
+val invidiousUser = secrets.getProperty("INVIDIOUS_USER") ?: "user"
+val invidiousPass = secrets.getProperty("INVIDIOUS_PASS") ?: "pass"
+
 android {
     namespace = "ca.devilplan.luci4invidious"
     compileSdk = 34
@@ -14,6 +25,15 @@ android {
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Inject secrets into BuildConfig so they're available at runtime
+        buildConfigField("String", "INVIDIOUS_HOST", "\"$invidiousHost\"")
+        buildConfigField("String", "INVIDIOUS_USER", "\"$invidiousUser\"")
+        buildConfigField("String", "INVIDIOUS_PASS", "\"$invidiousPass\"")
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     buildTypes {

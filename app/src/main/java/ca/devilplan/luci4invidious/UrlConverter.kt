@@ -6,21 +6,20 @@ import java.util.Locale
 /**
  * Converts YouTube URLs to Invidious URLs.
  * Uses only JDK classes so it can be unit-tested without Robolectric.
+ *
+ * @param invidiousHost the hostname of your Invidious instance (e.g. "my.invidious.org")
  */
-object UrlConverter {
+class UrlConverter(private val invidiousHost: String) {
 
-    // ── Hardcoded Invidious instance config ────────────────────────────
-    const val INVIDIOUS_HOST = "my.invidious.org"
-    const val INVIDIOUS_USER = "user"
-    const val INVIDIOUS_PASS = "pass"
-
-    // ── Known YouTube hosts ────────────────────────────────────────────
-    private val YOUTUBE_HOSTS = setOf(
-        "youtube.com",
-        "www.youtube.com",
-        "m.youtube.com",
-        "music.youtube.com"
-    )
+    companion object {
+        // ── Known YouTube hosts ────────────────────────────────────────
+        private val YOUTUBE_HOSTS = setOf(
+            "youtube.com",
+            "www.youtube.com",
+            "m.youtube.com",
+            "music.youtube.com"
+        )
+    }
 
     /**
      * Converts a YouTube URL to the equivalent Invidious URL.
@@ -37,20 +36,32 @@ object UrlConverter {
                     val videoId = url.path.removePrefix("/")
                     if (videoId.isBlank()) return null
                     val extraQuery = url.query?.let { "&$it" } ?: ""
-                    "https://$INVIDIOUS_HOST/watch?v=$videoId$extraQuery"
+                    "https://$invidiousHost/watch?v=$videoId$extraQuery"
                 }
 
                 in YOUTUBE_HOSTS -> {
                     val path = url.path
                     if (path.isBlank() || path == "/") return null
                     val query = url.query?.let { "?$it" } ?: ""
-                    "https://$INVIDIOUS_HOST$path$query"
+                    "https://$invidiousHost$path$query"
                 }
 
                 else -> null
             }
         } catch (e: Exception) {
             null
+        }
+    }
+
+    /**
+     * Returns true if the given URL's host matches the Invidious instance.
+     * Used by MainActivity to detect in-WebView Invidious links.
+     */
+    fun isInvidiousHost(url: String): Boolean {
+        return try {
+            URL(url).host.lowercase(Locale.US) == invidiousHost.lowercase(Locale.US)
+        } catch (e: Exception) {
+            false
         }
     }
 }
