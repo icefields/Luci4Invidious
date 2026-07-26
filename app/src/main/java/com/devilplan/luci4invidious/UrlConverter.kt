@@ -1,4 +1,4 @@
-package ca.devilplan.luci4invidious
+package com.devilplan.luci4invidious
 
 import java.net.URL
 import java.util.Locale

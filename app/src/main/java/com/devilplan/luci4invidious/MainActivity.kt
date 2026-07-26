@@ -1,11 +1,13 @@
-package ca.devilplan.luci4invidious
+package com.devilplan.luci4invidious
 
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.view.ViewGroup
 import android.webkit.HttpAuthHandler
+import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -41,7 +43,7 @@ class MainActivity : ComponentActivity() {
         // NOTE: Fullscreen <video> requires overriding onShowCustomView/
         // onHideCustomView in a custom WebChromeClient — not implemented
         // in this minimal app.
-        webView.webChromeClient = android.webkit.WebChromeClient()
+        webView.webChromeClient = WebChromeClient()
 
         webView.webViewClient = object : WebViewClient() {
 
@@ -140,7 +142,7 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         // Prevent WebView memory leak: detach from parent and destroy.
         if (::webView.isInitialized) {
-            (webView.parent as? android.view.ViewGroup)?.removeView(webView)
+            (webView.parent as? ViewGroup)?.removeView(webView)
             webView.destroy()
         }
         super.onDestroy()

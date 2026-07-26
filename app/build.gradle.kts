@@ -17,13 +17,13 @@ val invidiousUser = secrets.getProperty("INVIDIOUS_USER") ?: "user"
 val invidiousPass = secrets.getProperty("INVIDIOUS_PASS") ?: "pass"
 
 android {
-    namespace = "ca.devilplan.luci4invidious"
-    compileSdk = 34
+    namespace = "com.devilplan.luci4invidious"
+    compileSdk = 37
 
     defaultConfig {
-        applicationId = "ca.devilplan.luci4invidious"
+        applicationId = "com.devilplan.luci4invidious"
         minSdk = 24
-        targetSdk = 34
+        targetSdk = 37
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -59,7 +59,7 @@ android {
 }
 
 dependencies {
-    implementation("androidx.core:core-ktx:1.13.1")
-    implementation("androidx.activity:activity-ktx:1.9.0")
+    implementation("androidx.core:core-ktx:1.19.0")
+    implementation("androidx.activity:activity-ktx:1.13.0")
     testImplementation("junit:junit:4.13.2")
 }
