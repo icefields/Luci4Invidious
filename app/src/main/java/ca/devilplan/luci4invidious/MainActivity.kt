@@ -68,7 +68,8 @@ class MainActivity : ComponentActivity() {
                 view: WebView?,
                 request: WebResourceRequest?
             ): Boolean {
-                val url = request?.url?.toString() ?: return false
+                val req = request ?: return false
+                val url = req.url.toString()
 
                 // YouTube link → convert to Invidious and load in WebView
                 val converted = urlConverter.convert(url)
@@ -89,7 +90,7 @@ class MainActivity : ComponentActivity() {
                 view?.context?.let {
                     val extIntent = Intent(
                         Intent.ACTION_VIEW,
-                        request.url
+                        req.url
                     ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     try {
                         it.startActivity(extIntent)
