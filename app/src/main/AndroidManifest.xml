@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:allowBackup="true"
+        android:label="@string/app_name"
+        android:theme="@style/Theme.Luci4Invidious"
+        android:usesCleartextTraffic="false">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:configChanges="orientation|screenSize">
+
+            <!-- Launcher -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- YouTube watch URLs (HTTPS) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="youtube.com" android:pathPrefix="/watch" />
+                <data android:scheme="https" android:host="www.youtube.com" android:pathPrefix="/watch" />
+                <data android:scheme="https" android:host="m.youtube.com" android:pathPrefix="/watch" />
+                <data android:scheme="https" android:host="music.youtube.com" android:pathPrefix="/watch" />
+            </intent-filter>
+
+            <!-- YouTube shorts (HTTPS) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="youtube.com" android:pathPrefix="/shorts/" />
+                <data android:scheme="https" android:host="www.youtube.com" android:pathPrefix="/shorts/" />
+                <data android:scheme="https" android:host="m.youtube.com" android:pathPrefix="/shorts/" />
+            </intent-filter>
+
+            <!-- YouTube embeds (HTTPS) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="youtube.com" android:pathPrefix="/embed/" />
+                <data android:scheme="https" android:host="www.youtube.com" android:pathPrefix="/embed/" />
+            </intent-filter>
+
+            <!-- youtu.be short links (HTTPS) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="youtu.be" />
+            </intent-filter>
+
+            <!-- HTTP variants -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" android:host="youtube.com" android:pathPrefix="/watch" />
+                <data android:scheme="http" android:host="www.youtube.com" android:pathPrefix="/watch" />
+                <data android:scheme="http" android:host="m.youtube.com" android:pathPrefix="/watch" />
+                <data android:scheme="http" android:host="youtu.be" />
+            </intent-filter>
+
+        </activity>
+    </application>
+</manifest>
