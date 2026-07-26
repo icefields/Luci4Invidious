@@ -1,6 +1,5 @@
-package ca.devilplan.luci4invidious
+package com.devilplan.luci4invidious
 
-import com.devilplan.luci4invidious.UrlConverter
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -9,7 +8,7 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * Unit tests for [com.devilplan.luci4invidious.UrlConverter].
+ * Unit tests for [UrlConverter].
  * These run on the JVM — no device or Robolectric needed.
  */
 class UrlConverterTest {
