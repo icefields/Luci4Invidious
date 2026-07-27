@@ -7,7 +7,6 @@ import android.os.Build
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
-import android.webkit.HttpAuthHandler
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
@@ -18,17 +17,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -56,10 +49,11 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             MaterialTheme {
-                Surface(modifier = Modifier.fillMaxSize()) {
-                    var topInset by remember { mutableIntStateOf(0) }
-                    var bottomInset by remember { mutableIntStateOf(0) }
-
+                Surface(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .systemBarsPadding()
+                ) {
                     AndroidView(
                         factory = { ctx ->
                             val root = FrameLayout(ctx)
@@ -81,20 +75,6 @@ class MainActivity : ComponentActivity() {
                             }
 
                             webView.webViewClient = object : WebViewClient() {
-                                override fun onReceivedHttpAuthRequest(
-                                    view: WebView?, handler: HttpAuthHandler,
-                                    host: String?, realm: String?
-                                ) {
-                                    if (host == BuildConfig.INVIDIOUS_HOST) {
-                                        handler.proceed(
-                                            BuildConfig.INVIDIOUS_USER,
-                                            BuildConfig.INVIDIOUS_PASS
-                                        )
-                                    } else {
-                                        handler.cancel()
-                                    }
-                                }
-
                                 override fun shouldOverrideUrlLoading(
                                     view: WebView?, request: WebResourceRequest?
                                 ): Boolean {
@@ -177,21 +157,6 @@ class MainActivity : ComponentActivity() {
                             )
                             webViewRef = webView
                             root
-                        },
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(top = topInset.dp, bottom = bottomInset.dp),
-                        update = { frameLayout ->
-                            ViewCompat.setOnApplyWindowInsetsListener(frameLayout) { _, insets ->
-                                val bars = insets.getInsets(
-                                    WindowInsetsCompat.Type.statusBars() or
-                                    WindowInsetsCompat.Type.navigationBars()
-                                )
-                                topInset = bars.top
-                                bottomInset = bars.bottom
-                                frameLayout.setPadding(bars.left, 0, bars.right, 0)
-                                WindowInsetsCompat.CONSUMED
-                            }
                         }
                     )
                 }
