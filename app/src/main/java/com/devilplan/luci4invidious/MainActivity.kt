@@ -3,7 +3,6 @@ package com.devilplan.luci4invidious
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.Base64
@@ -12,7 +11,6 @@ import android.view.ViewGroup
 import android.webkit.HttpAuthHandler
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
-import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
@@ -28,9 +26,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import java.io.InputStream
-import java.net.HttpURLConnection
-import java.net.URL
 
 class MainActivity : ComponentActivity() {
 
@@ -53,11 +48,6 @@ class MainActivity : ComponentActivity() {
             Base64.NO_WRAP
         )
 
-        // JS patch: adds Authorization header to all fetch() and XHR requests.
-        // Invidious's video.js player uses MSE which fetches audio/video
-        // segments via fetch(). shouldInterceptRequest does NOT fire for
-        // fetch(), so this is the only way to auth those requests.
-        // Preserves existing headers (including Range) by merging.
         val jsAuthPatch = """
             (function() {
                 var auth = "$authHeader";
@@ -125,8 +115,6 @@ class MainActivity : ComponentActivity() {
 
                             webView.webViewClient = object : WebViewClient() {
 
-                                // 1. Inject auth patch before page scripts run
-                                // and re-inject after each navigation.
                                 override fun onPageStarted(
                                     view: WebView?, url: String?, favicon: android.graphics.Bitmap?
                                 ) {
@@ -139,9 +127,6 @@ class MainActivity : ComponentActivity() {
                                     view?.evaluateJavascript(jsAuthPatch, null)
                                 }
 
-                                // 2. Handle 401 challenges for page loads and
-                                // resource loads that go through Chromium's
-                                // network stack.
                                 override fun onReceivedHttpAuthRequest(
                                     view: WebView?, handler: HttpAuthHandler,
                                     host: String?, realm: String?
@@ -150,63 +135,6 @@ class MainActivity : ComponentActivity() {
                                         BuildConfig.INVIDIOUS_USER,
                                         BuildConfig.INVIDIOUS_PASS
                                     )
-                                }
-
-                                // 3. Intercept non-fetch resource requests
-                                // (<video>, <audio>, <img>, XHR) and add auth.
-                                // Strip Content-Encoding/Content-Length from
-                                // response because HttpURLConnection
-                                // auto-decompresses gzip.
-                                override fun shouldInterceptRequest(
-                                    view: WebView?, request: WebResourceRequest?
-                                ): WebResourceResponse? {
-                                    val req = request ?: return null
-                                    val url = req.url.toString()
-
-                                    if (!urlConverter.isInvidiousHost(url)) return null
-                                    if (req.method != "GET") return null
-
-                                    return try {
-                                        val conn = URL(url).openConnection() as HttpURLConnection
-                                        conn.requestMethod = "GET"
-                                        conn.setRequestProperty("Authorization", authHeader)
-                                        for ((key, value) in req.requestHeaders) {
-                                            if (!key.equals("Authorization", ignoreCase = true)) {
-                                                conn.setRequestProperty(key, value)
-                                            }
-                                        }
-                                        conn.connectTimeout = 15000
-                                        conn.readTimeout = 30000
-                                        conn.instanceFollowRedirects = true
-                                        conn.connect()
-
-                                        val statusCode = conn.responseCode
-                                        val contentType = conn.contentType ?: "application/octet-stream"
-                                        val mimeType = contentType.substringBefore(';').trim()
-
-                                        val stream: InputStream = if (statusCode in 200..399) {
-                                            conn.inputStream
-                                        } else {
-                                            conn.errorStream ?: conn.inputStream
-                                        }
-
-                                        val response = WebResourceResponse(mimeType, null, stream)
-                                        response.setStatusCodeAndReasonPhrase(
-                                            statusCode,
-                                            conn.responseMessage ?: ""
-                                        )
-                                        val respHeaders = mutableMapOf<String, String>()
-                                        for ((key, values) in conn.headerFields) {
-                                            if (key == null || values.isEmpty()) continue
-                                            if (key.equals("Content-Encoding", ignoreCase = true)) continue
-                                            if (key.equals("Content-Length", ignoreCase = true)) continue
-                                            respHeaders[key] = values.joinToString(", ")
-                                        }
-                                        response.responseHeaders = respHeaders
-                                        response
-                                    } catch (e: Exception) {
-                                        null
-                                    }
                                 }
 
                                 override fun shouldOverrideUrlLoading(
