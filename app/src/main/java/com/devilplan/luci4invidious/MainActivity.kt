@@ -62,112 +62,111 @@ class MainActivity : ComponentActivity() {
 
                     AndroidView(
                         factory = { ctx ->
-                            val root = FrameLayout(ctx).apply {
-                                layoutParams = ViewGroup.LayoutParams(
-                                    ViewGroup.LayoutParams.MATCH_PARENT,
-                                    ViewGroup.LayoutParams.MATCH_PARENT
-                                )
-                            }
+                            val root = FrameLayout(ctx)
+                            root.layoutParams = ViewGroup.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.MATCH_PARENT
+                            )
                             rootContainer = root
 
-                            val webView = WebView(ctx).apply {
-                                settings.javaScriptEnabled = true
-                                settings.domStorageEnabled = true
-                                settings.useWideViewPort = true
-                                settings.loadWithOverviewMode = true
-                                settings.mediaPlaybackRequiresUserGesture = false
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                    settings.safeBrowsingEnabled = false
+                            val webView = WebView(ctx)
+
+                            webView.settings.javaScriptEnabled = true
+                            webView.settings.domStorageEnabled = true
+                            webView.settings.useWideViewPort = true
+                            webView.settings.loadWithOverviewMode = true
+                            webView.settings.mediaPlaybackRequiresUserGesture = false
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                webView.settings.safeBrowsingEnabled = false
+                            }
+
+                            webView.webViewClient = object : WebViewClient() {
+                                override fun onReceivedHttpAuthRequest(
+                                    view: WebView?, handler: HttpAuthHandler,
+                                    host: String?, realm: String?
+                                ) {
+                                    if (host == BuildConfig.INVIDIOUS_HOST) {
+                                        handler.proceed(
+                                            BuildConfig.INVIDIOUS_USER,
+                                            BuildConfig.INVIDIOUS_PASS
+                                        )
+                                    } else {
+                                        handler.cancel()
+                                    }
                                 }
 
-                                webViewClient = object : WebViewClient() {
-                                    override fun onReceivedHttpAuthRequest(
-                                        view: WebView?, handler: HttpAuthHandler,
-                                        host: String?, realm: String?
-                                    ) {
-                                        if (host == BuildConfig.INVIDIOUS_HOST) {
-                                            handler.proceed(
-                                                BuildConfig.INVIDIOUS_USER,
-                                                BuildConfig.INVIDIOUS_PASS
-                                            )
-                                        } else {
-                                            handler.cancel()
-                                        }
-                                    }
+                                override fun shouldOverrideUrlLoading(
+                                    view: WebView?, request: WebResourceRequest?
+                                ): Boolean {
+                                    val req = request ?: return false
+                                    val url = req.url.toString()
 
-                                    override fun shouldOverrideUrlLoading(
-                                        view: WebView?, request: WebResourceRequest?
-                                    ): Boolean {
-                                        val req = request ?: return false
-                                        val url = req.url.toString()
-
-                                        val converted = urlConverter.convert(url)
-                                        if (converted != null) {
-                                            if (view != null) {
-                                                view.loadUrl(converted)
-                                                return true
-                                            }
-                                            return false
-                                        }
-                                        if (urlConverter.isInvidiousHost(url)) return false
-
-                                        view?.context?.let {
-                                            val extIntent = Intent(
-                                                Intent.ACTION_VIEW, req.url
-                                            ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                            try {
-                                                it.startActivity(extIntent)
-                                                return true
-                                            } catch (e: ActivityNotFoundException) {}
+                                    val converted = urlConverter.convert(url)
+                                    if (converted != null) {
+                                        if (view != null) {
+                                            view.loadUrl(converted)
+                                            return true
                                         }
                                         return false
                                     }
-                                }
+                                    if (urlConverter.isInvidiousHost(url)) return false
 
-                                webChromeClient = object : WebChromeClient() {
-                                    override fun onShowCustomView(
-                                        view: View?, callback: CustomViewCallback?
-                                    ) {
-                                        if (customView != null) {
-                                            callback?.onCustomViewHidden()
-                                            return
-                                        }
-                                        if (view == null) return
-                                        customView = view
-                                        val controller = WindowInsetsControllerCompat(
-                                            activity.window, activity.window.decorView
-                                        )
-                                        controller.hide(WindowInsetsCompat.Type.systemBars())
-                                        controller.systemBarsBehavior =
-                                            WindowInsetsControllerCompat
-                                                .BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-                                        root.addView(
-                                            view,
-                                            FrameLayout.LayoutParams(
-                                                ViewGroup.LayoutParams.MATCH_PARENT,
-                                                ViewGroup.LayoutParams.MATCH_PARENT
-                                            )
-                                        )
-                                        webView.visibility = View.GONE
+                                    view?.context?.let {
+                                        val extIntent = Intent(
+                                            Intent.ACTION_VIEW, req.url
+                                        ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        try {
+                                            it.startActivity(extIntent)
+                                            return true
+                                        } catch (e: ActivityNotFoundException) {}
                                     }
-
-                                    override fun onHideCustomView() {
-                                        customView?.let {
-                                            root.removeView(it)
-                                            customView = null
-                                        }
-                                        val controller = WindowInsetsControllerCompat(
-                                            activity.window, activity.window.decorView
-                                        )
-                                        controller.show(WindowInsetsCompat.Type.systemBars())
-                                        webView.visibility = View.VISIBLE
-                                    }
+                                    return false
                                 }
-
-                                val targetUrl = intentUrl?.let { urlConverter.convert(it) }
-                                    ?: "https://${BuildConfig.INVIDIOUS_HOST}"
-                                loadUrl(targetUrl)
                             }
+
+                            webView.webChromeClient = object : WebChromeClient() {
+                                override fun onShowCustomView(
+                                    view: View?, callback: CustomViewCallback?
+                                ) {
+                                    if (customView != null) {
+                                        callback?.onCustomViewHidden()
+                                        return
+                                    }
+                                    if (view == null) return
+                                    customView = view
+                                    val controller = WindowInsetsControllerCompat(
+                                        activity.window, activity.window.decorView
+                                    )
+                                    controller.hide(WindowInsetsCompat.Type.systemBars())
+                                    controller.systemBarsBehavior =
+                                        WindowInsetsControllerCompat
+                                            .BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                                    root.addView(
+                                        view,
+                                        FrameLayout.LayoutParams(
+                                            ViewGroup.LayoutParams.MATCH_PARENT,
+                                            ViewGroup.LayoutParams.MATCH_PARENT
+                                        )
+                                    )
+                                    webView.visibility = View.GONE
+                                }
+
+                                override fun onHideCustomView() {
+                                    customView?.let {
+                                        root.removeView(it)
+                                        customView = null
+                                    }
+                                    val controller = WindowInsetsControllerCompat(
+                                        activity.window, activity.window.decorView
+                                    )
+                                    controller.show(WindowInsetsCompat.Type.systemBars())
+                                    webView.visibility = View.VISIBLE
+                                }
+                            }
+
+                            val targetUrl = intentUrl?.let { urlConverter.convert(it) }
+                                ?: "https://${BuildConfig.INVIDIOUS_HOST}"
+                            webView.loadUrl(targetUrl)
 
                             root.addView(
                                 webView,
