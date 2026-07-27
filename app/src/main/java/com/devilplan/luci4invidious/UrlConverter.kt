@@ -12,13 +12,17 @@ import java.util.Locale
 class UrlConverter(private val invidiousHost: String) {
 
     companion object {
-        // ── Known YouTube hosts ────────────────────────────────────────
         private val YOUTUBE_HOSTS = setOf(
             "youtube.com",
             "www.youtube.com",
             "m.youtube.com",
             "music.youtube.com"
         )
+
+        /**
+         * Builds the default Invidious homepage URL for the given host.
+         */
+        fun buildHomepageUrl(host: String): String = "https://$host"
     }
 
     /**
@@ -32,7 +36,6 @@ class UrlConverter(private val invidiousHost: String) {
 
             when (host) {
                 "youtu.be" -> {
-                    // youtu.be/VIDEO_ID  →  invidious/watch?v=VIDEO_ID
                     val videoId = url.path.removePrefix("/")
                     if (videoId.isBlank()) return null
                     val extraQuery = url.query?.let { "&$it" } ?: ""
@@ -55,7 +58,6 @@ class UrlConverter(private val invidiousHost: String) {
 
     /**
      * Returns true if the given URL's host matches the Invidious instance.
-     * Used by MainActivity to detect in-WebView Invidious links.
      */
     fun isInvidiousHost(url: String): Boolean {
         return try {
@@ -64,4 +66,9 @@ class UrlConverter(private val invidiousHost: String) {
             false
         }
     }
+
+    /**
+     * Returns the default Invidious homepage URL.
+     */
+    fun homepageUrl(): String = buildHomepageUrl(invidiousHost)
 }
