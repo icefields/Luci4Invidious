@@ -28,7 +28,7 @@ No YouTube. No Google. No tracking. Just a clean pipe to your own Invidious fron
 
 ## What It Does
 
-When you tap a YouTube link anywhere on your phone — in a chat, browser, email, any app — Android will offer **Luci4Invidious** as an app to open it with. Instead of launching the YouTube app or opening youtube.com, it:
+When you tap a YouTube link anywhere on your phone, in a chat, browser, email, any app, Android will offer **Luci4Invidious** as an app to open it with. Instead of launching the YouTube app or opening youtube.com, it:
 
 1. Converts the YouTube URL to the equivalent Invidious URL
 2. Opens it in an embedded WebView
