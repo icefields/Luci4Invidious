@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
+import android.webkit.HttpAuthHandler
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
@@ -75,6 +76,16 @@ class MainActivity : ComponentActivity() {
                             }
 
                             webView.webViewClient = object : WebViewClient() {
+                                override fun onReceivedHttpAuthRequest(
+                                    view: WebView?, handler: HttpAuthHandler,
+                                    host: String?, realm: String?
+                                ) {
+                                    handler.proceed(
+                                        BuildConfig.INVIDIOUS_USER,
+                                        BuildConfig.INVIDIOUS_PASS
+                                    )
+                                }
+
                                 override fun shouldOverrideUrlLoading(
                                     view: WebView?, request: WebResourceRequest?
                                 ): Boolean {
