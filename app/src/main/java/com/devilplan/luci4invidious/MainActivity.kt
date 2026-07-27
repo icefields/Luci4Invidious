@@ -1,24 +1,33 @@
 package com.devilplan.luci4invidious
 
 import android.annotation.SuppressLint
-import android.app.DownloadManager
 import android.content.ActivityNotFoundException
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.util.Base64
 import android.view.View
 import android.view.ViewGroup
-import android.webkit.DownloadListener
 import android.webkit.HttpAuthHandler
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.webkit.WebViewDatabase
 import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -26,11 +35,9 @@ import androidx.core.view.WindowInsetsControllerCompat
 
 class MainActivity : ComponentActivity() {
 
-    private lateinit var webView: WebView
-    private lateinit var urlConverter: UrlConverter
-    private lateinit var rootContainer: ViewGroup
-
+    private var webViewRef: WebView? = null
     private var customView: View? = null
+    private var rootContainer: ViewGroup? = null
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,159 +45,169 @@ class MainActivity : ComponentActivity() {
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
-        setContentView(R.layout.activity_main)
-
-        rootContainer = findViewById(R.id.root_container)
-
-        ViewCompat.setOnApplyWindowInsetsListener(rootContainer) { v, insets ->
-            val bars = insets.getInsets(
-                WindowInsetsCompat.Type.statusBars() or
-                WindowInsetsCompat.Type.navigationBars()
-            )
-            v.setPadding(bars.left, bars.top, bars.right, bars.bottom)
-            WindowInsetsCompat.CONSUMED
-        }
-
-        urlConverter = UrlConverter(BuildConfig.INVIDIOUS_HOST)
-
-        webView = findViewById(R.id.webview)
-        webView.settings.javaScriptEnabled = true
-        webView.settings.domStorageEnabled = true
-        webView.settings.useWideViewPort = true
-        webView.settings.loadWithOverviewMode = true
-        webView.settings.mediaPlaybackRequiresUserGesture = false
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            webView.settings.safeBrowsingEnabled = false
-        }
-
-        val authHeader = "Basic " + Base64.encodeToString(
-            "${BuildConfig.INVIDIOUS_USER}:${BuildConfig.INVIDIOUS_PASS}".toByteArray(),
-            Base64.NO_WRAP
+        WebViewDatabase.getInstance(this).setHttpAuthUsernamePassword(
+            BuildConfig.INVIDIOUS_HOST, null,
+            BuildConfig.INVIDIOUS_USER, BuildConfig.INVIDIOUS_PASS
         )
 
-        webView.setDownloadListener(DownloadListener { url, _, _, mimetype, _ ->
-            try {
-                val request = DownloadManager.Request(Uri.parse(url))
-                    .setAllowedOverMetered(true)
-                    .setAllowedOverRoaming(true)
-                    .setTitle("Invidious download")
-                    .addRequestHeader("Authorization", authHeader)
-                if (mimetype != null) {
-                    request.setMimeType(mimetype)
-                }
-                val dm = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
-                dm.enqueue(request)
-            } catch (e: Exception) {
-                try {
-                    val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    startActivity(browserIntent)
-                } catch (e2: ActivityNotFoundException) {
-                    // Nothing we can do
-                }
-            }
-        })
+        val urlConverter = UrlConverter(BuildConfig.INVIDIOUS_HOST)
+        val intentUrl = intent?.data?.toString()
+        val activity = this
 
-        webView.webChromeClient = object : WebChromeClient() {
+        setContent {
+            MaterialTheme {
+                Surface(modifier = Modifier.fillMaxSize()) {
+                    var topInset by remember { mutableIntStateOf(0) }
+                    var bottomInset by remember { mutableIntStateOf(0) }
 
-            override fun onShowCustomView(view: View?, callback: CustomViewCallback?) {
-                if (customView != null) {
-                    callback?.onCustomViewHidden()
-                    return
-                }
-                customView = view
+                    AndroidView(
+                        factory = { ctx ->
+                            val root = FrameLayout(ctx).apply {
+                                layoutParams = ViewGroup.LayoutParams(
+                                    ViewGroup.LayoutParams.MATCH_PARENT,
+                                    ViewGroup.LayoutParams.MATCH_PARENT
+                                )
+                            }
+                            rootContainer = root
 
-                val controller = WindowInsetsControllerCompat(window, window.decorView)
-                controller.hide(WindowInsetsCompat.Type.systemBars())
-                controller.systemBarsBehavior =
-                    WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                            val webView = WebView(ctx).apply {
+                                settings.javaScriptEnabled = true
+                                settings.domStorageEnabled = true
+                                settings.useWideViewPort = true
+                                settings.loadWithOverviewMode = true
+                                settings.mediaPlaybackRequiresUserGesture = false
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                    settings.safeBrowsingEnabled = false
+                                }
 
-                rootContainer.addView(
-                    view,
-                    FrameLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.MATCH_PARENT
+                                webViewClient = object : WebViewClient() {
+                                    override fun onReceivedHttpAuthRequest(
+                                        view: WebView?, handler: HttpAuthHandler,
+                                        host: String?, realm: String?
+                                    ) {
+                                        if (host == BuildConfig.INVIDIOUS_HOST) {
+                                            handler.proceed(
+                                                BuildConfig.INVIDIOUS_USER,
+                                                BuildConfig.INVIDIOUS_PASS
+                                            )
+                                        } else {
+                                            handler.cancel()
+                                        }
+                                    }
+
+                                    override fun shouldOverrideUrlLoading(
+                                        view: WebView?, request: WebResourceRequest?
+                                    ): Boolean {
+                                        val req = request ?: return false
+                                        val url = req.url.toString()
+
+                                        val converted = urlConverter.convert(url)
+                                        if (converted != null) {
+                                            if (view != null) {
+                                                view.loadUrl(converted)
+                                                return true
+                                            }
+                                            return false
+                                        }
+                                        if (urlConverter.isInvidiousHost(url)) return false
+
+                                        view?.context?.let {
+                                            val extIntent = Intent(
+                                                Intent.ACTION_VIEW, req.url
+                                            ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                            try {
+                                                it.startActivity(extIntent)
+                                                return true
+                                            } catch (e: ActivityNotFoundException) {}
+                                        }
+                                        return false
+                                    }
+                                }
+
+                                webChromeClient = object : WebChromeClient() {
+                                    override fun onShowCustomView(
+                                        view: View?, callback: CustomViewCallback?
+                                    ) {
+                                        if (customView != null) {
+                                            callback?.onCustomViewHidden()
+                                            return
+                                        }
+                                        if (view == null) return
+                                        customView = view
+                                        val controller = WindowInsetsControllerCompat(
+                                            activity.window, activity.window.decorView
+                                        )
+                                        controller.hide(WindowInsetsCompat.Type.systemBars())
+                                        controller.systemBarsBehavior =
+                                            WindowInsetsControllerCompat
+                                                .BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                                        root.addView(
+                                            view,
+                                            FrameLayout.LayoutParams(
+                                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                                ViewGroup.LayoutParams.MATCH_PARENT
+                                            )
+                                        )
+                                        webView.visibility = View.GONE
+                                    }
+
+                                    override fun onHideCustomView() {
+                                        customView?.let {
+                                            root.removeView(it)
+                                            customView = null
+                                        }
+                                        val controller = WindowInsetsControllerCompat(
+                                            activity.window, activity.window.decorView
+                                        )
+                                        controller.show(WindowInsetsCompat.Type.systemBars())
+                                        webView.visibility = View.VISIBLE
+                                    }
+                                }
+
+                                val targetUrl = intentUrl?.let { urlConverter.convert(it) }
+                                    ?: "https://${BuildConfig.INVIDIOUS_HOST}"
+                                loadUrl(targetUrl)
+                            }
+
+                            root.addView(
+                                webView,
+                                FrameLayout.LayoutParams(
+                                    ViewGroup.LayoutParams.MATCH_PARENT,
+                                    ViewGroup.LayoutParams.MATCH_PARENT
+                                )
+                            )
+                            webViewRef = webView
+                            root
+                        },
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(top = topInset.dp, bottom = bottomInset.dp),
+                        update = { frameLayout ->
+                            ViewCompat.setOnApplyWindowInsetsListener(frameLayout) { _, insets ->
+                                val bars = insets.getInsets(
+                                    WindowInsetsCompat.Type.statusBars() or
+                                    WindowInsetsCompat.Type.navigationBars()
+                                )
+                                topInset = bars.top
+                                bottomInset = bars.bottom
+                                frameLayout.setPadding(bars.left, 0, bars.right, 0)
+                                WindowInsetsCompat.CONSUMED
+                            }
+                        }
                     )
-                )
-                webView.visibility = View.GONE
-            }
-
-            override fun onHideCustomView() {
-                customView?.let {
-                    rootContainer.removeView(it)
-                    customView = null
                 }
-                val controller = WindowInsetsControllerCompat(window, window.decorView)
-                controller.show(WindowInsetsCompat.Type.systemBars())
-                webView.visibility = View.VISIBLE
             }
         }
-
-        webView.webViewClient = object : WebViewClient() {
-
-            override fun onReceivedHttpAuthRequest(
-                view: WebView?,
-                handler: HttpAuthHandler,
-                host: String?,
-                realm: String?
-            ) {
-                if (host == BuildConfig.INVIDIOUS_HOST) {
-                    handler.proceed(BuildConfig.INVIDIOUS_USER, BuildConfig.INVIDIOUS_PASS)
-                } else {
-                    handler.cancel()
-                }
-            }
-
-            override fun shouldOverrideUrlLoading(
-                view: WebView?,
-                request: WebResourceRequest?
-            ): Boolean {
-                val req = request ?: return false
-                val url = req.url.toString()
-
-                val converted = urlConverter.convert(url)
-                if (converted != null) {
-                    if (view != null) {
-                        view.loadUrl(converted)
-                        return true
-                    }
-                    return false
-                }
-
-                if (urlConverter.isInvidiousHost(url)) {
-                    return false
-                }
-
-                view?.context?.let {
-                    val extIntent = Intent(
-                        Intent.ACTION_VIEW,
-                        req.url
-                    ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    try {
-                        it.startActivity(extIntent)
-                        return true
-                    } catch (e: ActivityNotFoundException) {
-                        // No app can handle this scheme
-                    }
-                }
-                return false
-            }
-        }
-
-        val targetUrl = intent?.data?.let { urlConverter.convert(it.toString()) }
-            ?: "https://${BuildConfig.INVIDIOUS_HOST}"
-
-        webView.loadUrl(targetUrl)
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
+                val wv = webViewRef
                 if (customView != null) {
-                    webView.webChromeClient?.onHideCustomView()
+                    wv?.webChromeClient?.onHideCustomView()
                     return
                 }
-                if (::webView.isInitialized && webView.canGoBack()) {
-                    webView.goBack()
+                if (wv != null && wv.canGoBack()) {
+                    wv.goBack()
                 } else {
                     isEnabled = false
                     onBackPressedDispatcher.onBackPressed()
@@ -201,27 +218,21 @@ class MainActivity : ComponentActivity() {
 
     override fun onPause() {
         super.onPause()
-        if (::webView.isInitialized) {
-            webView.onPause()
-        }
+        webViewRef?.onPause()
     }
 
     override fun onResume() {
         super.onResume()
-        if (::webView.isInitialized) {
-            webView.onResume()
-        }
+        webViewRef?.onResume()
     }
 
     override fun onDestroy() {
-        if (::webView.isInitialized) {
-            customView?.let {
-                rootContainer.removeView(it)
-                customView = null
-            }
-            (webView.parent as? ViewGroup)?.removeView(webView)
-            webView.destroy()
+        webViewRef?.let { wv ->
+            customView?.let { rootContainer?.removeView(it); customView = null }
+            (wv.parent as? ViewGroup)?.removeView(wv)
+            wv.destroy()
         }
+        webViewRef = null
         super.onDestroy()
     }
 }
